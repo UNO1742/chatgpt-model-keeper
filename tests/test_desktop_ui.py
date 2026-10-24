@@ -88,6 +88,7 @@ def run():
             assert page.locator('#work-range-fill').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(58, 131, 247)'
             assert page.evaluate('requests.some(x=>x.action==="theme"&&x.data.theme==="light")')
             page.screenshot(path=str(base.parent/'settings-v21-light.png'))
+            page.locator('#pane-work .reasoning').screenshot(path=str(base.parent/'blue-slider-v211.png'))
             page.evaluate('incoming(JSON.stringify({...initial,theme:"light"}))')
             assert page.locator('#theme-light').get_attribute('aria-pressed')=='true'
             print('PASS monochrome day/night themes, immediate persistence request and restored appearance')
