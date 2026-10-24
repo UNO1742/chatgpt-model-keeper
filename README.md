@@ -52,4 +52,4 @@ python -m pip install -r requirements-build.txt
 
 推送 `v*` 标签后，GitHub Actions 会构建并发布安装程序。发布版本号需要同步更新 `app.py` 与 `installer.iss`。
 
-开发验证：`python -m unittest discover -s tests -p test_services.py`；网页适配验证需要安装 Playwright 与 Chromium 后运行 `python tests/test_adapter.py`。GUI 可用 `python app.py --gui-smoke <报告路径>` 验证实时绘制计数和截图。发布前还应执行独立 Windows 用户的安装、Native Messaging 与跨电脑验收。
+开发验证：`python -m unittest discover -s tests -p test_services.py`；网页适配验证需要安装 Playwright 与 Chromium 后运行 `python tests/test_adapter.py`。GUI 可用 `python app.py --gui-smoke <报告路径>` 验证实时绘制计数和截图。构建后，`python tests/test_installer.py` 在临时目录和独立 Edge 配置中验证安装、迁移、自启偏好、Native Messaging、中英文模式、实时渲染及卸载，并恢复原有注册信息。跨电脑验收仍需在另一台实体 Windows 设备执行。
