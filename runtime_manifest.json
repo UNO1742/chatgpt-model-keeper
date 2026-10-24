@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "path": "horizon.mjs",
+      "url": "https://chatgpt.com/cdn/assets/async/317638.68ee213e53.js",
+      "sha256": "d17e8f92342415537a14648fdb5b650ff6925c847ffed81eb73bb158c963c2a6",
+      "size": 48558
+    },
+    {
+      "path": "assets/watercolor.1a973cf03f.webp",
+      "url": "https://chatgpt.com/cdn/assets/watercolor.1a973cf03f.webp",
+      "sha256": "ee187843f4de798abaa6b4f641d5704edb31756c84fdf4f1919fc2daa828a095",
+      "size": 88346
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<style>body{font:16px system-ui;padding:50px}button{padding:12px} [role=menu]{position:absolute;top:170px;width:320px;background:#eee;padding:20px} [role=menuitem],[role=menuitemradio]{padding:10px;cursor:pointer} [inert]{display:none} [role=slider]{display:inline-block;width:20px;height:20px;background:green}</style>
+<div role="group" aria-label="撰写器模式"><button aria-pressed="true" id="chat">聊天</button><button aria-pressed="false" id="work">工作</button></div>
+<div contenteditable="true" aria-label="询问 ChatGPT" style="margin:20px;border:1px solid #aaa;height:40px"></div>
+<button id="picker" data-codex-intelligence-trigger="true" data-selected-reasoning-effort="low" aria-haspopup="menu" aria-expanded="false" aria-label="选择 ChatGPT 模型">轻度</button>
+<script>
+window.testState={mode:'chat',model:'GPT-6',index:0,opens:0,changes:0,efforts:['low','medium','high','xhigh','ultra'],lang:'zh',models:['GPT-6','GPT-5.6 Sol'],locked:false};
+const t=document.querySelector('#picker');
+const names={zh:{none:'无',minimal:'极低',low:'轻度',medium:'中',high:'高',xhigh:'极高',max:'Max',ultra:'Ultra'},en:{none:'None',minimal:'Minimal',low:'Light',medium:'Medium',high:'High',xhigh:'Extra high',max:'Max',ultra:'Ultra'}};
+window.setMode=(m)=>{
+  testState.mode=m;document.querySelector('#chat').setAttribute('aria-pressed',String(m==='chat'));document.querySelector('#work').setAttribute('aria-pressed',String(m==='work'));
+  document.querySelector('[contenteditable]').setAttribute('aria-label',m==='chat'?'询问 ChatGPT':'使用 ChatGPT Work');
+  testState.model=m==='chat'?'GPT-6':'GPT-6.1 Sol';testState.models=m==='chat'?['GPT-6','GPT-5.6 Sol']:['GPT-6.1 Sol','GPT-6 Sol','GPT-6 Astra'];testState.index=0;renderTrigger();
+};
+window.renderTrigger=()=>{t.setAttribute('data-selected-reasoning-effort',testState.mode==='chat'&&testState.efforts[testState.index]==='xhigh'?'max':testState.efforts[testState.index]);t.textContent=names[testState.lang][testState.efforts[testState.index]];};
+function closeMenu(){document.querySelector('[role=menu]')?.remove();t.setAttribute('aria-expanded','false');}
+function renderMenu(view='simple'){
+  closeMenu();
+  t.setAttribute('aria-expanded','true');
+  const menu=document.createElement('div');menu.setAttribute('role','menu');menu.setAttribute('aria-labelledby','picker');
+  const toggle=document.createElement('div');toggle.setAttribute('role','menuitem');toggle.setAttribute('data-model-picker-view-toggle','true');toggle.textContent='选择模型';toggle.onclick=()=>renderMenu(view==='simple'?'models':'simple');menu.append(toggle);
+  const simple=document.createElement('div');simple.setAttribute('aria-hidden',String(view!=='simple'));if(view!=='simple')simple.setAttribute('inert','');
+  const status=document.createElement('span');status.id='announcement';status.setAttribute('role','status');status.textContent=names[testState.lang][testState.efforts[testState.index]]+'，第 '+(testState.index+1)+' 项，共 '+testState.efforts.length+' 项。';simple.append(status);
+  const keyboard=document.createElement('div');keyboard.setAttribute('role','menuitem');keyboard.setAttribute('data-reasoning-slider','true');keyboard.setAttribute('aria-describedby','announcement');keyboard.tabIndex=0;keyboard.textContent='强度';
+  const slider=document.createElement('span');slider.setAttribute('role','slider');slider.setAttribute('aria-valuemin','0');slider.setAttribute('aria-valuemax',testState.efforts.length-1);slider.setAttribute('aria-valuenow',testState.index);keyboard.append(slider);
+  keyboard.onkeydown=e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();const old=testState.index;testState.index=Math.max(0,Math.min(testState.efforts.length-1,old+(e.key==='ArrowLeft'?-1:1)));if(old!==testState.index)testState.changes++;status.textContent=names[testState.lang][testState.efforts[testState.index]]+', '+(testState.index+1)+' of '+testState.efforts.length;slider.setAttribute('aria-valuenow',testState.index);renderTrigger();};
+  simple.append(keyboard);menu.append(simple);
+  const list=document.createElement('div');if(view!=='models'){list.setAttribute('inert','');list.setAttribute('aria-hidden','true');}
+  testState.models.forEach(model=>{const row=document.createElement('div');row.setAttribute('role','menuitemradio');row.setAttribute('aria-checked',String(model===testState.model));row.textContent=model;if(testState.locked&&model==='GPT-6 Astra')row.setAttribute('aria-disabled','true');row.onclick=()=>{if(row.getAttribute('aria-disabled')==='true')return;testState.model=model;testState.changes++;renderTrigger();closeMenu();};list.append(row);});
+  menu.append(list);menu.onkeydown=e=>{if(e.key==='Escape')closeMenu();};document.body.append(menu);
+}
+// Radix dropdown trigger opens on pointerdown, not click.
+t.onpointerdown=()=>{if(document.querySelector('[role=menu]'))closeMenu();else{testState.opens++;renderMenu();}};
+document.querySelector('#chat').onclick=()=>setMode('chat');document.querySelector('#work').onclick=()=>setMode('work');
+</script></html>

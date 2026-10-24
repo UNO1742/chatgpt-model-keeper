@@ -1,0 +1,13 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="style.css"></head><body>
+<div id="orb"><canvas id="voice"></canvas><div id="orb-hit" title="点击设置 · 拖动移动 · 右键菜单"></div><span id="orb-error" hidden>!</span></div>
+<main id="card" hidden>
+  <header><div><span class="eyebrow">MODEL KEEPER</span><h1>按你的习惯思考</h1></div><button id="close" class="icon" aria-label="收起设置">×</button></header>
+  <div class="segments" role="tablist"><div class="thumb"></div><button class="selected" data-mode="chat" role="tab" aria-selected="true">聊天 <small>Chat</small></button><button data-mode="work" role="tab" aria-selected="false">工作 <small>Work</small></button></div>
+  <div class="panes"><section class="pane active" data-pane="chat"><label class="toggle-row">应用聊天预设<input id="chat-enabled" type="checkbox"><span class="switch"></span></label><label class="field">模型<input id="chat-model" list="models" autocomplete="off"></label><label class="field">思考程度<select id="chat-effort"></select></label></section><section class="pane" data-pane="work"><label class="toggle-row">应用工作预设<input id="work-enabled" type="checkbox"><span class="switch"></span></label><label class="field">模型<input id="work-model" list="models" autocomplete="off"></label><label class="field">思考程度<select id="work-effort"></select></label></section></div>
+  <datalist id="models"></datalist>
+  <div class="global"><label class="toggle-row">自动检测并调整<input id="enabled" type="checkbox"><span class="switch"></span></label><label class="toggle-row">登录 Windows 后启动<input id="startup" type="checkbox"><span class="switch"></span></label></div>
+  <button id="save" class="primary">保存设置</button>
+  <div class="actions"><button id="extension">浏览器扩展安装 <span id="extension-badge">未连接</span></button><button id="update"><span id="update-label">检查更新</span><small id="version"></small></button></div>
+  <p id="status" role="status">正在连接本机程序…</p>
+  <div id="guide" hidden><div class="guide-title">首次使用，只需加载一次<button id="guide-close" class="icon" aria-label="关闭安装说明">×</button></div><ol><li>在 Edge 打开 <strong>edge://extensions</strong></li><li>开启开发人员模式，点击“加载解压缩的扩展”</li><li>选择下面的文件夹，再刷新 ChatGPT</li></ol><div class="guide-buttons"><button id="copy-path">复制扩展路径</button><button id="open-folder">打开文件夹</button></div><p>安装成功后，不需要反复打开文件夹。</p></div>
+</main><script src="qwebchannel.js"></script><script type="module" src="app.js"></script></body></html>
