@@ -20,7 +20,7 @@ resources remain with their respective owner. This project is not affiliated
 with OpenAI.
 
 The model menu, power slider and mode indicator use the original stylesheet's
-class names and DOM structure. Desktop placement, monochrome accent variables,
+class names and DOM structure. Desktop placement, blue accent theme variables,
 accessibility bindings and local preset events are supplied by this project.
 This does not redistribute or execute the authenticated ChatGPT React app.
 

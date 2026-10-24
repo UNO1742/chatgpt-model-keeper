@@ -42,6 +42,9 @@ def run():
             dark=page.locator('#card').evaluate('e=>getComputedStyle(e).backgroundColor')
             assert page.locator('.Track-eoFI82').first.evaluate('e=>getComputedStyle(e).height')=='24px'
             assert page.locator('.Thumb-hwJ5wX').first.evaluate('e=>getComputedStyle(e).width')=='28px'
+            assert page.locator('#chat-range-fill').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(58, 131, 247)'
+            assert page.locator('#chat-ticks [data-selected=true]').count()==5
+            assert page.locator('#chat-ticks span').first.evaluate('e=>getComputedStyle(e).backgroundColor')=='rgba(255, 255, 255, 0.3)'
             save_style=page.locator('#save').evaluate('e=>({color:getComputedStyle(e).color,background:getComputedStyle(e).backgroundColor})')
             assert save_style['color']!=save_style['background'],save_style
             page.locator('#chat-model').click();assert page.locator('#chat-model-menu').is_visible()
@@ -68,6 +71,8 @@ def run():
             page.locator('#work-effort').focus();page.keyboard.press('Home');page.keyboard.press('ArrowRight');page.keyboard.press('ArrowRight')
             assert page.locator('#work-effort').get_attribute('data-effort')=='high'
             assert page.locator('#work-effort').get_attribute('aria-valuetext')=='高 / High'
+            assert page.locator('#work-ticks [data-selected=true]').count()==3
+            assert page.locator('#work-ticks [data-selected=false]').count()==1
             page.locator('#work-rail-labels button').filter(has_text='极高').click()
             assert page.locator('#work-effort').get_attribute('data-effort')=='xhigh'
             page.keyboard.press('ArrowLeft')
@@ -80,6 +85,7 @@ def run():
             page.locator('#theme-light').click();page.wait_for_timeout(230)
             assert page.locator('html').get_attribute('data-theme')=='light'
             assert page.locator('#card').evaluate('e=>getComputedStyle(e).backgroundColor')!=dark
+            assert page.locator('#work-range-fill').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(58, 131, 247)'
             assert page.evaluate('requests.some(x=>x.action==="theme"&&x.data.theme==="light")')
             page.screenshot(path=str(base.parent/'settings-v21-light.png'))
             page.evaluate('incoming(JSON.stringify({...initial,theme:"light"}))')
