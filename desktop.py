@@ -1,4 +1,5 @@
 """Qt WebEngine desktop: real-time Horizon renderer and a rounded settings card."""
+import ctypes
 import hashlib
 import json
 import mimetypes
@@ -45,6 +46,14 @@ class Bridge(QObject):
                     owner.panel_ready=True;owner.initial();owner.status()
                     if owner.runtime_ready:self.send('runtimeReady')
             elif action=='hide':owner.panel.hide()
+            elif action=='panelDragStart':owner.panel_drag=(QCursor.pos(),owner.panel.pos())
+            elif action=='panelDragMove' and owner.panel_drag:
+                cursor,position=owner.panel_drag
+                target=position+QCursor.pos()-cursor
+                screen=owner.application.screenAt(QCursor.pos()) or owner.application.primaryScreen()
+                area=screen.availableGeometry()
+                owner.panel.move(QPoint(max(area.left()-owner.panel.width()+60,min(target.x(),area.right()-60)),max(area.top(),min(target.y(),area.bottom()-60))))
+            elif action=='panelDragEnd':owner.panel_drag=None
             elif action=='dragStart':owner.drag_start=(QCursor.pos(),owner.orb.pos())
             elif action=='dragMove' and owner.drag_start:
                 cursor,position=owner.drag_start;owner.orb.move(owner.clamp(position+QCursor.pos()-cursor))
@@ -150,6 +159,7 @@ class Desktop(QObject):
         super().__init__();self.application=application;self.bridge=Bridge(self);self.events=Events(self)
         self.events.completed.connect(self.completed)
         self.runtime_ready=False;self.runtime_error='';self.orb_ready=False;self.panel_ready=False;self.runtime_event=threading.Event()
+        self.panel_drag=None;self.mouse_buttons=0
         self.console_errors=[];self.release=None;self.drag_start=None;self.token=secrets.token_urlsafe(24)
         manifest=json.loads((api.ASSETS/'runtime_manifest.json').read_text(encoding='utf-8'))
         self.runtime_files={'runtime/'+entry['path'] for entry in manifest['files']}
@@ -168,11 +178,21 @@ class Desktop(QObject):
             saved=json.loads((api.ROOT/'ui.json').read_text(encoding='utf-8'));position=QPoint(int(saved['x']),int(saved['y']))
         except (OSError,ValueError,KeyError,TypeError):pass
         self.orb.move(self.clamp(position));self.orb.show()
+        # Only sample button state; no global hook, input interception or click replay.
+        self.outside_timer=QTimer(self);self.outside_timer.timeout.connect(self.check_outside_click);self.outside_timer.start(25)
         self.timer=QTimer(self);self.timer.timeout.connect(self.status);self.timer.start(3000)
         self.worker('runtime',lambda:ensure_runtime(api.ROOT,api.ASSETS))
         application.aboutToQuit.connect(self.shutdown)
         if smoke:
             self.smoke=Path(smoke);QTimer.singleShot(11000,self.smoke_result)
+    def check_outside_click(self):
+        buttons=sum((1<<i) for i,key in enumerate((1,2,4)) if ctypes.windll.user32.GetAsyncKeyState(key)&0x8000)
+        pressed=buttons & ~self.mouse_buttons;self.mouse_buttons=buttons
+        if not pressed or not self.panel.isVisible() or self.panel_drag:return
+        point=QCursor.pos()
+        # The orb handles its own toggle on release, avoiding an accidental reopen.
+        if self.orb.geometry().contains(point):return
+        if not self.panel.geometry().adjusted(12,12,-12,-12).contains(point):self.panel.hide()
     def clamp(self,p):
         area=self.application.primaryScreen().availableGeometry()
         return QPoint(max(area.left(),min(p.x(),area.right()-80)),max(area.top(),min(p.y(),area.bottom()-80)))

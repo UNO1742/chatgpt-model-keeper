@@ -51,6 +51,12 @@ new QWebChannel(qt.webChannelTransport,channel=>{
   });
   if(isOrb){let down=false,moved=false,x=0,y=0;const hit=$('#orb-hit');hit.onpointerdown=e=>{if(e.button!==0)return;down=true;moved=false;x=e.screenX;y=e.screenY;hit.setPointerCapture(e.pointerId);request('dragStart');};hit.onpointermove=e=>{if(down&&Math.abs(e.screenX-x)+Math.abs(e.screenY-y)>4){moved=true;request('dragMove');}};hit.onpointerup=e=>{if(!down)return;down=false;request('dragEnd',{moved});};hit.oncontextmenu=e=>{e.preventDefault();request('context');};}
   else{
+    const header=$('header');let panelDragging=false;
+    header.onpointerdown=e=>{if(e.button!==0||e.target.closest('button'))return;panelDragging=true;header.classList.add('dragging');header.setPointerCapture(e.pointerId);request('panelDragStart');};
+    header.onpointermove=()=>{if(panelDragging)request('panelDragMove');};
+    const endPanelDrag=()=>{if(!panelDragging)return;panelDragging=false;header.classList.remove('dragging');request('panelDragEnd');};
+    header.onpointerup=endPanelDrag;header.onpointercancel=endPanelDrag;header.onlostpointercapture=endPanelDrag;
+    document.addEventListener('pointerdown',e=>{if(!e.target.closest('#card'))request('hide');});
     for(const theme of ['light','dark'])$('#theme-'+theme).onclick=()=>{setTheme(theme);request('theme',{theme});};
     for(const mode of ['chat','work']){
       $('[data-mode='+mode+']').onclick=()=>chooseMode(mode);

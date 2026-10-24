@@ -15,7 +15,7 @@ import time
 import winreg
 
 HOST = 'local.chatgpt.modelkeeper'
-VERSION = '2.2.0'
+VERSION = '2.2.1'
 RUN_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'
 RUN_VALUE = 'ChatGPTModelKeeper'
 def installation_root():
