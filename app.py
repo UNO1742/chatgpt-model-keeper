@@ -15,7 +15,7 @@ import time
 import winreg
 
 HOST = 'local.chatgpt.modelkeeper'
-VERSION = '2.0.0'
+VERSION = '2.1.0'
 RUN_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'
 RUN_VALUE = 'ChatGPTModelKeeper'
 def installation_root():
@@ -47,11 +47,12 @@ EXE = ROOT / 'ModelKeeper.exe'
 ASSETS = Path(getattr(sys, '_MEIPASS', Path(__file__).parent))
 DEFAULT = {'enabled': True, 'chat': {'enabled': True, 'model': 'GPT-6', 'effort': 'xhigh'},
            'work': {'enabled': True, 'model': 'GPT-6 Sol', 'effort': 'xhigh'}}
-MODELS = ['GPT-6', 'GPT-6.1 Sol', 'GPT-6 Astra', 'GPT-6 Sol', 'GPT-6 Luna',
-          'GPT-5.6 Sol', 'GPT-5.6 Terra', 'GPT-5.6 Luna']
-EFFORTS = [('none','无 / None'), ('minimal','极低 / Minimal'), ('low','轻度 / Light / Low'),
-           ('medium','中 / Medium'), ('high','高 / High'), ('xhigh','极高 / Extra high'),
-           ('max','Max'), ('ultra','Ultra')]
+MODELS = {'chat': ['GPT-6', 'GPT-5.6 Sol'],
+          'work': ['GPT-6.1 Sol', 'GPT-6 Astra', 'GPT-6 Sol', 'GPT-6 Luna',
+                   'GPT-5.6 Sol', 'GPT-5.6 Terra', 'GPT-5.6 Luna']}
+EFFORTS = [('none','即时 / Instant'), ('low','轻度 / Light'),
+           ('medium','中 / Medium'), ('high','高 / High'), ('xhigh','极高 / Extra high')]
+MODE_EFFORTS = {'chat': EFFORTS, 'work': EFFORTS[1:]}
 
 def atomic_write(path, obj):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -73,7 +74,7 @@ def load_config():
             if isinstance(p.get('enabled'), bool): result[mode]['enabled'] = p['enabled']
             if isinstance(p.get('model'), str) and 0 < len(p['model']) <= 80:
                 result[mode]['model'] = p['model']
-            if p.get('effort') in dict(EFFORTS): result[mode]['effort'] = p['effort']
+            if p.get('effort') in dict(MODE_EFFORTS[mode]): result[mode]['effort'] = p['effort']
     except (OSError, ValueError, TypeError, AttributeError): pass
     return result
 
@@ -149,6 +150,22 @@ def extension_directory():
     json.loads((folder/'manifest.json').read_text(encoding='utf-8'))
     return folder
 
+
+def load_appearance():
+    try:
+        data=json.loads((ROOT/'appearance.json').read_text(encoding='utf-8'))
+        if data.get('theme') in ('light','dark'):return {'theme':data['theme']}
+    except (OSError,ValueError,AttributeError):pass
+    return {'theme':'dark'}
+
+
+def prepare_extension_install():
+    # Edge requires first-time confirmation for unpacked extensions. Prepare the
+    # real folder; open its native management page without changing policies.
+    folder=extension_directory()
+    os.startfile('microsoft-edge:edge://extensions/')
+    return folder
+
 def uninstall():
     set_startup(False)
     # Browser must remove its own extension; preserve preferences for reinstall.
@@ -220,7 +237,7 @@ def register_installed():
     was_enabled = startup_enabled() if (legacy/'startup.json').exists() else True
     ROOT = Path(sys.executable).resolve().parent
     EXE = ROOT/'ModelKeeper.exe'
-    for name in ('config.json','ui.json'):
+    for name in ('config.json','ui.json','appearance.json'):
         if legacy!=ROOT and (legacy/name).is_file() and not (ROOT/name).exists():
             shutil.copy2(legacy/name,ROOT/name)
     if not (ROOT/'config.json').exists():atomic_write(ROOT/'config.json',DEFAULT)

@@ -45,7 +45,26 @@ class Services(unittest.TestCase):
         self.assertEqual(validate_config(copy.deepcopy(app.DEFAULT)),app.DEFAULT)
         broken=copy.deepcopy(app.DEFAULT);broken['work']['model']=''
         with self.assertRaises(ValueError):validate_config(broken)
+        for forbidden in ('pro','ultra','max'):
+            broken=copy.deepcopy(app.DEFAULT);broken['chat']['effort']=forbidden
+            with self.assertRaises(ValueError):validate_config(broken)
+        broken=copy.deepcopy(app.DEFAULT);broken['work']['effort']='none'
+        with self.assertRaises(ValueError):validate_config(broken)
         broken=copy.deepcopy(app.DEFAULT);broken['chat']['effort']='made-up'
         with self.assertRaises(ValueError):validate_config(broken)
+    def test_appearance_and_legacy_effort_migration(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(app,'ROOT',Path(directory)):
+            self.assertEqual(app.load_appearance(),{'theme':'dark'})
+            app.atomic_write(app.ROOT/'appearance.json',{'theme':'light'})
+            self.assertEqual(app.load_appearance(),{'theme':'light'})
+            config=copy.deepcopy(app.DEFAULT);config['chat']['effort']='ultra';config['work']['effort']='max'
+            app.atomic_write(app.ROOT/'config.json',config)
+            self.assertEqual(app.load_config()['chat']['effort'],'xhigh')
+            self.assertEqual(app.load_config()['work']['effort'],'xhigh')
+    def test_assisted_install_uses_real_extension_folder(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(app,'ROOT',Path(directory)), patch('os.startfile') as launch:
+            folder=app.prepare_extension_install()
+            self.assertTrue((folder/'manifest.json').is_file())
+            launch.assert_called_once_with('microsoft-edge:edge://extensions/')
 
 if __name__=='__main__':unittest.main()

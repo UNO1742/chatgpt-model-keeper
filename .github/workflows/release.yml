@@ -41,7 +41,12 @@ jobs:
         run: |
           gh release view $env:GITHUB_REF_NAME *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload $env:GITHUB_REF_NAME release/ModelKeeper-Setup.exe release/SHA256SUMS.txt --clobber
+            $published = gh release view $env:GITHUB_REF_NAME --json assets | ConvertFrom-Json
+            if ($published.assets.name -contains 'ModelKeeper-Setup.exe') {
+              Write-Output 'The verified installer is already published; preserve this release asset.'
+            } else {
+              gh release upload $env:GITHUB_REF_NAME release/ModelKeeper-Setup.exe release/SHA256SUMS.txt
+            }
           } else {
             gh release create $env:GITHUB_REF_NAME release/ModelKeeper-Setup.exe release/SHA256SUMS.txt --verify-tag --generate-notes
           }

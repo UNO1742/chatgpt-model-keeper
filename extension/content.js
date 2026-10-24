@@ -5,7 +5,7 @@
   'use strict';
   const norm = s => String(s || '').normalize('NFKC').trim().toLowerCase().replace(/[\s_-]+/g,'');
   const labels = {
-    none:['无','None'], minimal:['极低','Minimal'], low:['轻度','低','Light','Low'],
+    none:['即时','Instant','无','None'], minimal:['极低','Minimal'], low:['轻度','低','Light','Low'],
     medium:['中','中等','Medium'], high:['高','High'],
     xhigh:['极高','Extra high','Extra-high','Very high','Xhigh'], max:['Max'], ultra:['Ultra']
   };

@@ -40,12 +40,14 @@ def run():
         legacy=root/'ChatGPTModelKeeper';legacy.mkdir()
         config={'enabled':True,'chat':{'enabled':True,'model':'GPT-6','effort':'xhigh'},'work':{'enabled':True,'model':'GPT-6 Sol','effort':'xhigh'}}
         (legacy/'config.json').write_text(json.dumps(config))
+        (legacy/'appearance.json').write_text(json.dumps({'theme':'light'}))
         installed=False
         try:
             subprocess.run([str(BASE/'release/ModelKeeper-Setup.exe'),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/NOICONS','/NOLAUNCH=1',f'/DIR={target}',f'/LOG={root/"install.log"}'],check=True,env=env,timeout=150)
             installed=True
             exe=target/'ModelKeeper.exe';host=target/'ModelKeeperHost.exe'
             assert json.loads((target/'config.json').read_text(encoding='utf-8'))==config
+            assert json.loads((target/'appearance.json').read_text(encoding='utf-8'))=={'theme':'light'}
             assert json.loads((target/'host.json').read_text(encoding='utf-8'))['path']==str(host)
             assert values(HOST_KEY)[0][1]==str(target/'host.json')
             assert (target/'extension/manifest.json').exists()

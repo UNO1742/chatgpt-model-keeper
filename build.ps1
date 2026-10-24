@@ -13,7 +13,9 @@ foreach ($name in @('icuuc.dll','icudt78.dll')) {
         $resolved = (Resolve-Path -LiteralPath $target).Path
         $bundle = (Resolve-Path -LiteralPath 'dist/ModelKeeper/_internal').Path
         if ([IO.Path]::GetDirectoryName($resolved) -ne $bundle) { throw 'Unexpected ICU path' }
-        Remove-Item -LiteralPath $resolved
+        $quarantine=Join-Path $PSScriptRoot 'build/icu-excluded'
+        New-Item -ItemType Directory -Path $quarantine -Force | Out-Null
+        Move-Item -LiteralPath $resolved -Destination (Join-Path $quarantine $name) -Force
     }
 }
 Copy-Item -LiteralPath 'dist/ModelKeeperHost.exe' -Destination 'dist/ModelKeeper/ModelKeeperHost.exe' -Force

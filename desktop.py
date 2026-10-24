@@ -43,6 +43,7 @@ class Bridge(QObject):
                     if owner.runtime_ready:self.send('runtimeReady')
                 else:
                     owner.panel_ready=True;owner.initial();owner.status()
+                    if owner.runtime_ready:self.send('runtimeReady')
             elif action=='hide':owner.panel.hide()
             elif action=='dragStart':owner.drag_start=(QCursor.pos(),owner.orb.pos())
             elif action=='dragMove' and owner.drag_start:
@@ -58,6 +59,16 @@ class Bridge(QObject):
                 api.set_startup(bool(data.get('startup')))
                 api.atomic_write(api.ROOT/'config.json',config)
                 self.send('notice',text='已保存 · 开机自启'+('已开启' if api.startup_enabled() else '已关闭'))
+            elif action=='theme':
+                theme=data.get('theme')
+                if theme not in ('light','dark'):raise ValueError('不支持的主题')
+                api.atomic_write(api.ROOT/'appearance.json',{'theme':theme})
+                self.send('theme',theme=theme)
+            elif action=='prepareExtension':
+                folder=api.prepare_extension_install()
+                QApplication.clipboard().setText(str(folder))
+                self.send('extensionPrepared',path=str(folder))
+                self.send('notice',text='已准备扩展、复制路径并打开 Edge。首次仍需开启开发人员模式并加载文件夹。')
             elif action in ('copyExtension','openExtension'):
                 folder=api.extension_directory();QApplication.clipboard().setText(str(folder))
                 if action=='openExtension':QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
@@ -79,7 +90,7 @@ def validate_config(data):
         preset=data.get(mode,{})
         model=preset.get('model','')
         if not isinstance(model,str) or not 0<len(model.strip())<=80:raise ValueError('请输入网页中的完整模型名称')
-        if preset.get('effort') not in dict(api.EFFORTS):raise ValueError('不支持的思考程度')
+        if preset.get('effort') not in dict(api.MODE_EFFORTS[mode]):raise ValueError('不支持的思考程度')
         if not isinstance(preset.get('enabled'),bool):raise ValueError('模式开关格式不正确')
         result[mode]={'enabled':preset['enabled'],'model':model.strip(),'effort':preset['effort']}
     return result
@@ -91,17 +102,22 @@ class LocalFiles(BaseHTTPRequestHandler):
         if self.headers.get('Host')!=f'127.0.0.1:{self.server.server_port}':self.send_error(403);return
         path=urlparse(self.path).path
         prefix='/'+owner.token+'/'
-        if not path.startswith(prefix):self.send_error(404);return
-        relative=path[len(prefix):]
+        if not path.startswith(prefix) and path not in owner.font_files:self.send_error(404);return
+        relative=path[len(prefix):] if path.startswith(prefix) else ''
         data=None;mime=None
         if relative=='ui/qwebchannel.js':
             data=owner.webchannel_js;mime='application/javascript'
         elif relative in ('ui/index.html','ui/style.css','ui/app.js'):
             file=api.ASSETS/'desktop_ui'/relative.split('/')[-1]
             data=file.read_bytes();mime={'html':'text/html','css':'text/css','js':'application/javascript'}[file.suffix[1:]]
-        elif relative in ('runtime/horizon.mjs','runtime/assets/watercolor.1a973cf03f.webp'):
+        elif relative in owner.runtime_files:
             file=api.ROOT/relative
-            if file.is_file():data=file.read_bytes();mime='application/javascript' if file.suffix=='.mjs' else 'image/webp'
+            if not file.is_file():owner.runtime_event.wait(30)
+            if file.is_file():data=file.read_bytes();mime={'.mjs':'application/javascript','.css':'text/css','.woff2':'font/woff2','.webp':'image/webp'}[file.suffix]
+        elif path in owner.font_files:
+            file=api.ROOT/'runtime'/owner.font_files[path]
+            if not file.is_file():owner.runtime_event.wait(30)
+            if file.is_file():data=file.read_bytes();mime='font/woff2'
         if data is None:self.send_error(404);return
         self.send_response(200);self.send_header('Content-Type',mime+'; charset=utf-8' if mime.startswith(('text/','application/javascript')) else mime)
         self.send_header('Content-Length',str(len(data)));self.send_header('Cache-Control','no-store')
@@ -133,8 +149,11 @@ class Desktop(QObject):
     def __init__(self,application,smoke=None):
         super().__init__();self.application=application;self.bridge=Bridge(self);self.events=Events(self)
         self.events.completed.connect(self.completed)
-        self.runtime_ready=False;self.runtime_error='';self.orb_ready=False;self.panel_ready=False
+        self.runtime_ready=False;self.runtime_error='';self.orb_ready=False;self.panel_ready=False;self.runtime_event=threading.Event()
         self.console_errors=[];self.release=None;self.drag_start=None;self.token=secrets.token_urlsafe(24)
+        manifest=json.loads((api.ASSETS/'runtime_manifest.json').read_text(encoding='utf-8'))
+        self.runtime_files={'runtime/'+entry['path'] for entry in manifest['files']}
+        self.font_files={'/cdn/assets/'+entry['path']:entry['path'] for entry in manifest['files'] if entry['path'].endswith('.woff2')}
         file=QFile(':/qtwebchannel/qwebchannel.js')
         if not file.open(QIODevice.OpenModeFlag.ReadOnly):raise RuntimeError('Qt WebChannel 资源不可用')
         self.webchannel_js=bytes(file.readAll());file.close()
@@ -164,6 +183,7 @@ class Desktop(QObject):
         threading.Thread(target=task,daemon=True).start()
     @Slot(str,object)
     def completed(self,kind,value):
+        if kind=='runtime':self.runtime_event.set()
         if isinstance(value,dict) and 'error' in value:
             if kind=='runtime':self.runtime_error='实时球资源加载失败：'+value['error']
             self.bridge.send('updateError',text=self.runtime_error if kind=='runtime' else value['error']);return
@@ -176,7 +196,7 @@ class Desktop(QObject):
             self.application.quit()
     def initial(self):
         self.bridge.send('initial',config=api.load_config(),startup=api.startup_enabled(),version=api.VERSION,
-            models=api.MODELS,efforts=api.EFFORTS,status=self.runtime_error or '原始网页动效 · 实时 WebGL 渲染')
+            models=api.MODELS,efforts=api.MODE_EFFORTS,theme=api.load_appearance()['theme'],status=self.runtime_error or '原始网页动效 · 实时 WebGL 渲染')
     def status(self):
         if not self.panel_ready or not self.panel.isVisible():return
         connected=False;text='等待 Edge 扩展连接。首次使用请点击“浏览器扩展安装”。'
@@ -195,7 +215,8 @@ class Desktop(QObject):
         self.panel.move(x,y);self.panel.show();self.panel.raise_()
         if self.panel_ready:self.initial();self.status()
     def context(self):
-        menu=QMenu();menu.setStyleSheet('QMenu{background:#292c34;color:#eee;border:1px solid #555;border-radius:10px;padding:7px} QMenu::item{padding:8px 15px} QMenu::item:selected{background:#414858}')
+        light=api.load_appearance()['theme']=='light'
+        menu=QMenu();menu.setStyleSheet('QMenu{background:'+('#fff;color:#171717' if light else '#202020;color:#eee')+';border:1px solid #777;border-radius:10px;padding:7px} QMenu::item{padding:8px 15px} QMenu::item:selected{background:'+('#e9e9e9' if light else '#3a3a3a')+'}')
         menu.addAction('模型设置',self.toggle_panel)
         menu.addAction('项目与下载 · GitHub',lambda:QDesktopServices.openUrl(QUrl(github_updates.RELEASES)))
         menu.addSeparator();menu.addAction('退出悬浮窗',self.application.quit);menu.exec(QCursor.pos())

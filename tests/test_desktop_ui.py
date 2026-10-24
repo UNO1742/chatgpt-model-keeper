@@ -1,5 +1,4 @@
-"""Own settings UI: rounded card, visible slider transition and bridge actions."""
-import copy
+"""Settings interaction regressions and theme/slider screenshots."""
 import json
 from pathlib import Path
 import sys
@@ -9,12 +8,23 @@ from functools import partial
 from playwright.sync_api import sync_playwright
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import app
+from runtime_cache import ensure_runtime
+
 
 def run():
     base=Path(__file__).resolve().parents[1]
-    initial={'type':'initial','config':app.DEFAULT,'startup':True,'version':app.VERSION,'models':app.MODELS,'efforts':app.EFFORTS}
+    initial={'type':'initial','config':app.DEFAULT,'startup':True,'version':app.VERSION,'models':app.MODELS,'efforts':app.MODE_EFFORTS,'theme':'dark'}
+    runtime=ensure_runtime(base.parent/'test-web-runtime',base)
     class Quiet(SimpleHTTPRequestHandler):
         def log_message(self,*args):pass
+        def do_GET(self):
+            path=self.path.split('?')[0]
+            name=path.rsplit('/',1)[-1]
+            if path.startswith(('/runtime/','/cdn/assets/')) and (runtime/name).is_file():
+                data=(runtime/name).read_bytes();self.send_response(200)
+                self.send_header('Content-Type','text/css' if name.endswith('.css') else 'font/woff2')
+                self.end_headers();self.wfile.write(data);return
+            super().do_GET()
     server=ThreadingHTTPServer(('127.0.0.1',0),partial(Quiet,directory=str(base/'desktop_ui')))
     threading.Thread(target=server.serve_forever,daemon=True).start()
     try:
@@ -24,30 +34,69 @@ def run():
             page.add_init_script('window.initial='+json.dumps(initial)+';window.qt={webChannelTransport:{}};window.requests=[];window.QWebChannel=function(t,callback){callback({objects:{bridge:{message:{connect(fn){window.incoming=fn}},request(raw){const m=JSON.parse(raw);requests.push(m);if(m.action==="ready")incoming(JSON.stringify(initial));}}}})};')
             page.goto(f'http://127.0.0.1:{server.server_port}/index.html?view=settings')
             page.wait_for_function('document.querySelector("#chat-model").value==="GPT-6"')
+            page.wait_for_timeout(380)
+            bottom=page.locator('#card').evaluate('e=>e.getBoundingClientRect().bottom')
+            page.screenshot(path=str(base.parent/'settings-v21-dark.png'))
+            assert bottom<=650,bottom
             assert page.locator('#card').evaluate('e=>getComputedStyle(e).borderRadius')=='28px'
-            assert page.locator('#card').evaluate('e=>e.getBoundingClientRect().bottom')<=650
-            page.locator('#chat-model').fill('GPT-5.6 Sol')
+            dark=page.locator('#card').evaluate('e=>getComputedStyle(e).backgroundColor')
+            assert page.locator('.Track-eoFI82').first.evaluate('e=>getComputedStyle(e).height')=='24px'
+            assert page.locator('.Thumb-hwJ5wX').first.evaluate('e=>getComputedStyle(e).width')=='28px'
+            save_style=page.locator('#save').evaluate('e=>({color:getComputedStyle(e).color,background:getComputedStyle(e).backgroundColor})')
+            assert save_style['color']!=save_style['background'],save_style
+            page.locator('#chat-model').click();assert page.locator('#chat-model-menu').is_visible()
+            assert page.locator('#chat-model-menu [role=option]').all_text_contents()==['GPT-6✓','GPT-5.6 Sol']
+            page.locator('#chat-model').click();assert page.locator('#chat-model-menu').is_hidden()
+            page.locator('#chat-model').click();page.locator('h1').click();assert page.locator('#chat-model-menu').is_hidden()
+            page.locator('#chat-model').press('ArrowDown');assert page.locator('#chat-model-menu').is_visible()
+            page.keyboard.press('End');page.keyboard.press('Enter')
+            assert page.locator('#chat-model').evaluate('e=>e.value')=='GPT-5.6 Sol'
+            assert page.locator('#chat-model-menu').is_hidden()
+            page.locator('#chat-model').click();page.keyboard.press('Escape');assert page.locator('#chat-model-menu').is_hidden()
+            assert not page.evaluate('requests.some(x=>x.action==="hide")')
+            print('PASS model dropdown: exact per-mode catalog, second click, outside click, Escape and keyboard selection')
             page.locator('[data-mode=work]').click();page.wait_for_timeout(80)
             midway=page.locator('.thumb').evaluate('e=>getComputedStyle(e).transform')
             page.wait_for_timeout(250)
             finish=page.locator('.thumb').evaluate('e=>getComputedStyle(e).transform')
             assert midway!=finish,(midway,finish)
-            assert page.locator('[data-pane=work]').evaluate('e=>getComputedStyle(e).opacity')=='1'
-            page.locator('#work-effort').select_option('high');page.locator('#save').click()
+            assert page.locator('#pane-chat').evaluate('e=>e.inert')
+            page.locator('#work-model').click()
+            assert len(page.locator('#work-model-menu [role=option]').all_text_contents())==7
+            assert page.locator('#work-model-menu [role=option]').filter(has_text='GPT-6.1 Sol').count()==1
+            page.locator('#work-model').click()
+            page.locator('#work-effort').focus();page.keyboard.press('Home');page.keyboard.press('ArrowRight');page.keyboard.press('ArrowRight')
+            assert page.locator('#work-effort').get_attribute('data-effort')=='high'
+            assert page.locator('#work-effort').get_attribute('aria-valuetext')=='高 / High'
+            page.locator('#work-rail-labels button').filter(has_text='极高').click()
+            assert page.locator('#work-effort').get_attribute('data-effort')=='xhigh'
+            page.keyboard.press('ArrowLeft')
+            assert not any('Ultra' in s or 'Pro' in s for s in page.locator('.rail-labels').all_text_contents())
+            page.locator('#save').click()
             saved=page.evaluate('requests.findLast(x=>x.action==="save").data')
             assert saved['config']['chat']['model']=='GPT-5.6 Sol'
             assert saved['config']['work']['effort']=='high'
-            print('PASS rounded card fits window; slider visibly transitions; both presets survive switching')
+            print('PASS mode transition and discrete range: keyboard, clickable ticks, exact saved effort, no Pro/Ultra')
+            page.locator('#theme-light').click();page.wait_for_timeout(230)
+            assert page.locator('html').get_attribute('data-theme')=='light'
+            assert page.locator('#card').evaluate('e=>getComputedStyle(e).backgroundColor')!=dark
+            assert page.evaluate('requests.some(x=>x.action==="theme"&&x.data.theme==="light")')
+            page.screenshot(path=str(base.parent/'settings-v21-light.png'))
+            page.evaluate('incoming(JSON.stringify({...initial,theme:"light"}))')
+            assert page.locator('#theme-light').get_attribute('aria-pressed')=='true'
+            print('PASS monochrome day/night themes, immediate persistence request and restored appearance')
             page.locator('#extension').click();assert page.locator('#guide').is_visible()
-            assert page.evaluate('requests.some(x=>x.action==="copyExtension")')
+            page.locator('#prepare-extension').click();assert page.evaluate('requests.some(x=>x.action==="prepareExtension")')
+            page.evaluate('incoming(JSON.stringify({type:"status",connected:true,text:"已连接"}))')
+            assert '已连接成功' in page.locator('#guide-state').inner_text()
             page.locator('#open-folder').click();assert page.evaluate('requests.some(x=>x.action==="openExtension")')
             page.locator('#guide-close').click();assert not page.locator('#guide').is_visible()
-            print('PASS extension installation guide explains one-time loading and separate folder action')
-            page.evaluate('incoming(JSON.stringify({type:"release",release:{newer:true,tag:"v2.1.0"}}));incoming(JSON.stringify(initial));')
+            print('PASS assisted extension installation: preparation action, manual confirmation guidance, automatic connection confirmation')
+            page.evaluate('incoming(JSON.stringify({type:"release",release:{newer:true,tag:"v2.2.0"}}));incoming(JSON.stringify(initial));')
             assert page.locator('#version').text_content()=='v'+app.VERSION
             page.locator('#update').click();assert page.evaluate('requests.some(x=>x.action==="installUpdate")')
             assert not errors,errors
-            print('PASS GitHub update button retains version UI and dispatches update action')
+            print('PASS GitHub update action survives reopening settings')
             browser.close()
     finally:server.shutdown();server.server_close()
 

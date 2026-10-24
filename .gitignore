@@ -13,6 +13,7 @@ config.json
 status.json
 startup.json
 ui.json
+appearance.json
 host.json
 error.log
 floating.py

@@ -11,6 +11,30 @@
       "url": "https://chatgpt.com/cdn/assets/watercolor.1a973cf03f.webp",
       "sha256": "ee187843f4de798abaa6b4f641d5704edb31756c84fdf4f1919fc2daa828a095",
       "size": 88346
+    },
+    {
+      "path": "web-ui.css",
+      "url": "https://chatgpt.com/cdn/assets/886701.f42294bdf3.css",
+      "size": 1795180,
+      "sha256": "8ca83d51c936dcacaf31478e539843ed5857d87256e81430bd79d47db911b4e4"
+    },
+    {
+      "path": "OpenAISans-Regular.b55d597a01.woff2",
+      "url": "https://chatgpt.com/cdn/assets/OpenAISans-Regular.b55d597a01.woff2",
+      "size": 49040,
+      "sha256": "d8891174b6ee24eb2a18b2545fcc5e2583981d0122ee25dc889658beda98f537"
+    },
+    {
+      "path": "OpenAISans-Medium.bb7acdf308.woff2",
+      "url": "https://chatgpt.com/cdn/assets/OpenAISans-Medium.bb7acdf308.woff2",
+      "size": 51304,
+      "sha256": "623bb4f58818f629f2edc9c1cabd7eec2fec3163aa867b1c0279e0b54f46d4dd"
+    },
+    {
+      "path": "OpenAISans-Semibold.ba1cdafb47.woff2",
+      "url": "https://chatgpt.com/cdn/assets/OpenAISans-Semibold.ba1cdafb47.woff2",
+      "size": 56196,
+      "sha256": "e99a4258393f746552665fb8a07a7dcdacf2af4834cc0611148761005c7e006d"
     }
   ]
 }
