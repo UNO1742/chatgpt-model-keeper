@@ -20,9 +20,10 @@ def run():
         def do_GET(self):
             path=self.path.split('?')[0]
             name=path.rsplit('/',1)[-1]
-            if path.startswith(('/runtime/','/cdn/assets/')) and (runtime/name).is_file():
-                data=(runtime/name).read_bytes();self.send_response(200)
-                self.send_header('Content-Type','text/css' if name.endswith('.css') else 'font/woff2')
+            file=runtime/(path[len('/runtime/'):] if path.startswith('/runtime/') else name)
+            if path.startswith(('/runtime/','/cdn/assets/')) and file.is_file():
+                data=file.read_bytes();self.send_response(200)
+                self.send_header('Content-Type','text/css' if name.endswith('.css') else 'application/javascript' if name.endswith('.mjs') else 'font/woff2')
                 self.end_headers();self.wfile.write(data);return
             super().do_GET()
     server=ThreadingHTTPServer(('127.0.0.1',0),partial(Quiet,directory=str(base/'desktop_ui')))
@@ -35,6 +36,7 @@ def run():
             page.goto(f'http://127.0.0.1:{server.server_port}/index.html?view=settings')
             page.wait_for_function('document.querySelector("#chat-model").value==="GPT-6"')
             page.wait_for_timeout(380)
+            page.wait_for_function('document.querySelector("#chat-effort").dataset.renderer==="original-RWnX-H"')
             bottom=page.locator('#card').evaluate('e=>e.getBoundingClientRect().bottom')
             page.screenshot(path=str(base.parent/'settings-v21-dark.png'))
             assert bottom<=650,bottom
@@ -42,9 +44,9 @@ def run():
             dark=page.locator('#card').evaluate('e=>getComputedStyle(e).backgroundColor')
             assert page.locator('.Track-eoFI82').first.evaluate('e=>getComputedStyle(e).height')=='24px'
             assert page.locator('.Thumb-hwJ5wX').first.evaluate('e=>getComputedStyle(e).width')=='28px'
-            assert page.locator('#chat-range-fill').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(58, 131, 247)'
-            assert page.locator('#chat-ticks [data-selected=true]').count()==5
-            assert page.locator('#chat-ticks span').first.evaluate('e=>getComputedStyle(e).backgroundColor')=='rgba(255, 255, 255, 0.3)'
+            assert page.locator('#chat-effort .Range-CJS9gM').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(58, 131, 247)'
+            assert page.locator('#chat-effort .Tick-pg_l_t[data-selected=true]').count()==5
+            assert page.locator('#chat-effort .Tick-pg_l_t').first.evaluate('e=>getComputedStyle(e).backgroundColor')=='rgba(255, 255, 255, 0.3)'
             save_style=page.locator('#save').evaluate('e=>({color:getComputedStyle(e).color,background:getComputedStyle(e).backgroundColor})')
             assert save_style['color']!=save_style['background'],save_style
             page.locator('#chat-model').click();assert page.locator('#chat-model-menu').is_visible()
@@ -68,11 +70,12 @@ def run():
             assert len(page.locator('#work-model-menu [role=option]').all_text_contents())==7
             assert page.locator('#work-model-menu [role=option]').filter(has_text='GPT-6.1 Sol').count()==1
             page.locator('#work-model').click()
-            page.locator('#work-effort').focus();page.keyboard.press('Home');page.keyboard.press('ArrowRight');page.keyboard.press('ArrowRight')
+            page.wait_for_function('document.querySelector("#work-effort").dataset.renderer==="original-RWnX-H"');page.locator('#work-effort').focus();page.keyboard.press('Home');page.keyboard.press('ArrowRight');page.keyboard.press('ArrowRight')
             assert page.locator('#work-effort').get_attribute('data-effort')=='high'
             assert page.locator('#work-effort').get_attribute('aria-valuetext')=='高 / High'
-            assert page.locator('#work-ticks [data-selected=true]').count()==3
-            assert page.locator('#work-ticks [data-selected=false]').count()==1
+            page.wait_for_function('document.querySelectorAll("#work-effort .Tick-pg_l_t[data-selected=true]").length===3',timeout=5000)
+            assert page.locator('#work-effort .Tick-pg_l_t[data-selected=true]').count()==3
+            assert page.locator('#work-effort .Tick-pg_l_t[data-selected=false]').count()==1
             page.locator('#work-rail-labels button').filter(has_text='极高').click()
             assert page.locator('#work-effort').get_attribute('data-effort')=='xhigh'
             page.keyboard.press('ArrowLeft')
@@ -82,10 +85,28 @@ def run():
             assert saved['config']['chat']['model']=='GPT-5.6 Sol'
             assert saved['config']['work']['effort']=='high'
             print('PASS mode transition and discrete range: keyboard, clickable ticks, exact saved effort, no Pro/Ultra')
+            # Compare visible centers rather than reproducing the component's math.
+            for width in (360,420,360):
+                page.set_viewport_size({'width':width,'height':650})
+                page.locator('#work-rail-labels button').filter(has_text='极高').click()
+                page.wait_for_timeout(650)
+                thumb=page.locator('#work-effort .Thumb-hwJ5wX').bounding_box()
+                dot=page.locator('#work-effort .Tick-pg_l_t').last.bounding_box()
+                assert abs(thumb['x']+thumb['width']/2-dot['x']-dot['width']/2)<1.5,(width,thumb,dot)
+            first=page.locator('#work-effort .Tick-pg_l_t').first.bounding_box()
+            thumb=page.locator('#work-effort .Thumb-hwJ5wX').bounding_box()
+            page.mouse.move(thumb['x']+thumb['width']/2,thumb['y']+thumb['height']/2)
+            page.mouse.down();page.mouse.move(first['x']+first['width']/2,first['y']+first['height']/2,steps=10);page.mouse.up()
+            page.wait_for_function('document.querySelector("#work-effort").dataset.effort==="low"')
+            page.locator('#work-rail-labels').get_by_role('button',name='高',exact=True).click()
+            assert page.evaluate('originalSliderEngine.component')=='H'
+            assert page.locator('.native-slider-bridge').count()==0
+            assert not page.evaluate('originalSliderEngine.loaded.some(id=>["Wf1j","bqtn","ZxXe"].includes(id))')
+            print('PASS original React/Radix/Motion component: thumb/dot alignment across widths, real drag, no replacement range input or account modules')
             page.locator('#theme-light').click();page.wait_for_timeout(230)
             assert page.locator('html').get_attribute('data-theme')=='light'
             assert page.locator('#card').evaluate('e=>getComputedStyle(e).backgroundColor')!=dark
-            assert page.locator('#work-range-fill').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(58, 131, 247)'
+            assert page.locator('#work-effort .Range-CJS9gM').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(58, 131, 247)'
             assert page.evaluate('requests.some(x=>x.action==="theme"&&x.data.theme==="light")')
             page.screenshot(path=str(base.parent/'settings-v21-light.png'))
             page.locator('#pane-work .reasoning').screenshot(path=str(base.parent/'blue-slider-v211.png'))

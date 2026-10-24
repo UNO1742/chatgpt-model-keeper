@@ -35,6 +35,36 @@
       "url": "https://chatgpt.com/cdn/assets/OpenAISans-Semibold.ba1cdafb47.woff2",
       "size": 56196,
       "sha256": "e99a4258393f746552665fb8a07a7dcdacf2af4834cc0611148761005c7e006d"
+    },
+    {
+      "path": "component/226913.f2de3ceb87.mjs",
+      "url": "https://chatgpt.com/cdn/assets/226913.f2de3ceb87.js",
+      "size": 738430,
+      "sha256": "d80791287df5863ac1af6329465f59c6ba1ea0d868468fb3ae5fad21421abbe4"
+    },
+    {
+      "path": "component/337882.a886ddfe75.mjs",
+      "url": "https://chatgpt.com/cdn/assets/337882.a886ddfe75.js",
+      "size": 2190401,
+      "sha256": "1e5b1ac2f97d76370002b381e7ab814e41fe9c931c4df29b6805a6a4a6dfd550"
+    },
+    {
+      "path": "component/257798.f8dfab4d2e.mjs",
+      "url": "https://chatgpt.com/cdn/assets/257798.f8dfab4d2e.js",
+      "size": 665668,
+      "sha256": "873d7a381834d99b3b2b0d71571fa0cad084d8aa57e294d9eb1560abedafc63d"
+    },
+    {
+      "path": "component/673108.b00e716df0.mjs",
+      "url": "https://chatgpt.com/cdn/assets/673108.b00e716df0.js",
+      "size": 2100459,
+      "sha256": "a5d5ae81ed323e5605122a23299f20fe2448bfb261fb8bb696e1ca3d8aae5c06"
+    },
+    {
+      "path": "component/396705.4dac4581d5.mjs",
+      "url": "https://chatgpt.com/cdn/assets/396705.4dac4581d5.js",
+      "size": 1298629,
+      "sha256": "01c507a368720d4a7e31d5a0bb835006f554f154ec95b2552c0289bffce30f4c"
     }
   ]
 }

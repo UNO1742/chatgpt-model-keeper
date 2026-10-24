@@ -10,7 +10,8 @@ from replacing the dynamically loaded Qt libraries with compatible builds.
 Chromium licensing: https://www.chromium.org/chromium-os/licensing/ .
 
 The Horizon orb renderer, watercolor texture, original ChatGPT UI stylesheet
-and OpenAI Sans fonts are **not** part of this
+OpenAI Sans fonts, original PowerSlider component and its original runtime
+dependency bundles are **not** part of this
 repository or release payload and are **not** covered by this project's MIT
 license. At first use, the application retrieves the public resources identified
 in `runtime_manifest.json` directly from their original ChatGPT CDN, verifies
@@ -19,10 +20,13 @@ cookies or conversation content are used. Availability and rights in these
 resources remain with their respective owner. This project is not affiliated
 with OpenAI.
 
-The model menu, power slider and mode indicator use the original stylesheet's
-class names and DOM structure. Desktop placement, blue accent theme variables,
-accessibility bindings and local preset events are supplied by this project.
-This does not redistribute or execute the authenticated ChatGPT React app.
+The power slider executes the original component function and its original
+React/Radix/Motion dependencies. A narrowly scoped export shim exposes its
+entry point without rewriting the component body. It evaluates only the
+generic dependency closure needed for the independent slider; it does not
+start the authenticated ChatGPT app or account/business modules. Desktop
+placement, blue accent variables, allowed option data, accessibility bindings
+and local preset events are supplied by this project.
 
 The Edge extension manifest contains a public key solely to keep its identifier
 stable. No corresponding private key or account credential is included.

@@ -107,7 +107,7 @@ class LocalFiles(BaseHTTPRequestHandler):
         data=None;mime=None
         if relative=='ui/qwebchannel.js':
             data=owner.webchannel_js;mime='application/javascript'
-        elif relative in ('ui/index.html','ui/style.css','ui/app.js'):
+        elif relative in ('ui/index.html','ui/style.css','ui/app.js','ui/original_component.js'):
             file=api.ASSETS/'desktop_ui'/relative.split('/')[-1]
             data=file.read_bytes();mime={'html':'text/html','css':'text/css','js':'application/javascript'}[file.suffix[1:]]
         elif relative in owner.runtime_files:
@@ -223,10 +223,12 @@ class Desktop(QObject):
     def smoke_result(self):
         self.toggle_panel()
         def finish(result):
-            self.smoke.parent.mkdir(parents=True,exist_ok=True)
-            self.smoke.write_text(json.dumps({'runtime_ready':self.runtime_ready,'orb':result,'orb_ready':self.orb_ready,'panel_ready':self.panel_ready,'url':self.orb.url().toString(),'errors':self.console_errors,'runtime_error':self.runtime_error}),encoding='utf-8')
-            self.panel.grab().save(str(self.smoke.with_suffix('.png')))
-            self.application.quit()
+            def complete(panel):
+                self.smoke.parent.mkdir(parents=True,exist_ok=True)
+                self.smoke.write_text(json.dumps({'runtime_ready':self.runtime_ready,'orb':result,'panel':panel,'orb_ready':self.orb_ready,'panel_ready':self.panel_ready,'url':self.orb.url().toString(),'errors':self.console_errors,'runtime_error':self.runtime_error}),encoding='utf-8')
+                self.panel.grab().save(str(self.smoke.with_suffix('.png')))
+                self.application.quit()
+            self.panel.page().runJavaScript('JSON.stringify({theme:document.documentElement.dataset.theme,sliders:[...document.querySelectorAll("[data-renderer]")].map(e=>{const t=e.querySelector(".Thumb-hwJ5wX")?.getBoundingClientRect(),d=[...e.querySelectorAll(".Tick-pg_l_t[data-selected=true]")].at(-1)?.getBoundingClientRect();return {renderer:e.dataset.renderer,blue:getComputedStyle(e.querySelector(".Range-CJS9gM")).backgroundColor,selectedDelta:t&&d?Math.abs(t.x+t.width/2-d.x-d.width/2):null}})})',complete)
         QTimer.singleShot(800,lambda:self.orb.page().runJavaScript('JSON.stringify({kind:window.orbKind,draws:window.orbDraws,canvases:document.querySelectorAll("canvas").length,body:document.body?.innerText.slice(0,100)})',finish))
     def shutdown(self):
         self.timer.stop();self.server.shutdown();self.server.server_close()

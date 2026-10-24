@@ -87,6 +87,8 @@ def run():
             data=json.loads(report.read_text(encoding='utf-8'));orb=json.loads(data['orb'])
             assert data['runtime_ready'] and data['panel_ready'] and not data['errors'] and not data['runtime_error'],data
             assert orb['kind']=='HorizonVoiceOrbController/live' and orb['draws']>10 and orb['canvases']==1,orb
+            panel=json.loads(data['panel']);assert len(panel['sliders'])==2,panel
+            assert all(s['renderer']=='original-RWnX-H' and s['blue']=='rgb(58, 131, 247)' and s['selectedDelta']<1.5 for s in panel['sliders']),panel
             print(f'PASS Installed original live renderer: {orb["draws"]} draws; rounded settings screenshot',flush=True)
         finally:
             if installed:

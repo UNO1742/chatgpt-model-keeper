@@ -4,14 +4,15 @@ import json
 from pathlib import Path
 import os
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 def ensure_runtime(root, assets):
     manifest=json.loads((assets/'runtime_manifest.json').read_text(encoding='utf-8'))
     cache=root/'runtime'
-    for entry in manifest['files']:
+    def fetch(entry):
         path=cache/entry['path']
         if path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest()==entry['sha256']:
-            continue
+            return
         req=urllib.request.Request(entry['url'],headers={'User-Agent':'ChatGPT-Model-Keeper/2.0'})
         with urllib.request.urlopen(req,timeout=25) as response:
             data=response.read(entry['size']+1)
@@ -20,4 +21,6 @@ def ensure_runtime(root, assets):
         path.parent.mkdir(parents=True,exist_ok=True)
         temporary=path.with_name(path.name+'.download')
         temporary.write_bytes(data);os.replace(temporary,path)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(fetch,manifest['files']))
     return cache
