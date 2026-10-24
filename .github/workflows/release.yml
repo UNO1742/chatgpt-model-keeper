@@ -17,9 +17,18 @@ jobs:
           cache-dependency-path: requirements-build.txt
       - run: python -m pip install -r requirements-build.txt
       - run: python -m unittest discover -s tests -p test_services.py
+      - name: Install pinned Inno Setup with Chinese language support
+        shell: pwsh
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'innosetup.exe'
+          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe' -OutFile $installer
+          if ((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash -ne '0362A383ED217D4C4239B5933866DD96D3EB2102737DA92F80F6057A4B40DF2F') { throw 'Inno Setup checksum mismatch' }
+          $compiler = Join-Path $env:RUNNER_TEMP 'InnoSetup'
+          $process = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',"/DIR=$compiler") -WindowStyle Hidden -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'Inno Setup installation failed' }
       - name: Compile per-user installer
         shell: pwsh
-        run: ./build.ps1
+        run: ./build.ps1 -InnoCompiler (Join-Path $env:RUNNER_TEMP 'InnoSetup/ISCC.exe')
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
